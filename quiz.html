@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Instuderingsquiz — Datalagring, Processorer & RAM</title>
+  <style>
+    :root{--bg:#0f172a;--card:#0b1220;--accent:#06b6d4;--text:#e6eef6}
+    body{font-family:Inter,system-ui,Segoe UI,Helvetica,Arial; background:linear-gradient(180deg,#071026 0%, #041022 100%); color:var(--text); margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+    .app{width:100%;max-width:760px;background:var(--card);border-radius:14px;padding:20px;box-shadow:0 10px 30px rgba(2,6,23,.6)}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    h1{font-size:18px;margin:0}
+    .meta{font-size:13px;opacity:.8}
+    .question{background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);padding:18px;border-radius:10px;margin:14px 0;font-size:16px}
+    .options{display:grid;grid-template-columns:1fr;gap:10px}
+    button.opt{background:#071622;border:1px solid rgba(255,255,255,0.04);padding:12px;border-radius:8px;text-align:left;font-size:15px;color:var(--text);cursor:pointer}
+    button.opt.correct{outline:3px solid rgba(6,182,212,.14);background:linear-gradient(90deg, rgba(6,182,212,0.06), transparent)}
+    button.opt.wrong{opacity:.6;filter:grayscale(.2)}
+    .controls{display:flex;justify-content:space-between;align-items:center;margin-top:14px}
+    .small{font-size:13px;opacity:.9}
+    .btn{background:var(--accent);color:#012; padding:8px 12px;border-radius:8px;border:none;font-weight:600;cursor:pointer}
+    .score{background:rgba(255,255,255,0.02);padding:10px;border-radius:8px;text-align:center;margin-top:12px}
+    footer{margin-top:12px;font-size:13px;opacity:.8;text-align:center}
+    @media(min-width:640px){.options{grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+  <div class="app" role="application">
+    <header>
+      <div>
+        <h1>Instuderingsquiz — Datalagring, Processorer & RAM</h1>
+        <div class="meta">En övningsapp: 1 rätt svar + 3 felaktiga alternativ per fråga</div>
+      </div>
+      <div class="meta">Frågor: <span id="total">0</span> • Poäng: <span id="score">0</span></div>
+    </header>
+
+    <main>
+      <div id="qcard" class="question">Laddar frågor…</div>
+      <div id="opts" class="options"></div>
+
+      <div class="controls">
+        <div class="small">Fråga <span id="index">0</span>/<span id="total2">0</span></div>
+        <div>
+          <button class="btn" id="nextBtn" style="display:none">Nästa</button>
+          <button class="btn" id="restartBtn" style="display:none">Starta om</button>
+        </div>
+      </div>
+
+      <div class="score" id="resultMsg" style="display:none">Resultat</div>
+      <div class="score" id="explanation" style="display:none"></div>
+    </main>
+
+    <footer>
+      Mobilvänlig övningsapp — tryck på ett alternativ för att svara. Rätt svar markeras.
+    </footer>
+  </div>
+
+  <script>
+    const QUESTIONS = [
+      // Datalagring
+      {question: "Vad är skillnaden mellan primärminne och sekundärminne?", correct: "Primärminne är snabbare och icke-beständigt; sekundärminne är större och mer beständigt", wrongs: ["Primärminne lagrar filer permanent; sekundärminne används bara för processer","Sekundärminne är alltid snabbare än primärminne","Primärminne används endast för grafik"], explanation: "Primärminne (RAM) är snabbt men försvinner när datorn stängs av, sekundärminne (t.ex. SSD) lagrar permanent."},
+      {question: "Nämn två viktiga egenskaper hos en SSD jämfört med en HDD.", correct: "SSD är tyst och tålig (inga rörliga delar)", wrongs: ["SSD har magnetiska skivor","HDD är alltid snabbare","SSD behöver kylfläkt"], explanation: "SSD saknar rörliga delar vilket gör den snabbare, tystare och mer tålig."},
+      {question: "Vad används partitionering till på en hårddisk?", correct: "Att dela upp en fysisk disk i flera logiska enheter", wrongs: ["Öka diskens rotationshastighet","Kopiera operativsystemet automatiskt","Skapa fler cacheminnen"]},
+      {question: "Vilka är de vanligaste gränssnitten (interface) för lagringsenheter i persondatorer?", correct: "SATA", wrongs: ["HDMI","VGA","DisplayPort"]},
+      {question: "Hur snabb är SATA 3.0 i MB/s?", correct: "600 MB/s", wrongs: ["60 MB/s","3000 MB/s","12000 MB/s"]},
+      {question: "Vad betyder M.2-standarden och hur anges storleken?", correct: "M.2 är små interna enheter, storlek anges i mm (t.ex. 2280)", wrongs: ["En äldre typ av SATA-kabel","Standard för RAM-minnen","En extern hårddiskport"]},
+      {question: "Vad kallas en enskild binär siffra?", correct: "En bit", wrongs: ["En byte","En pixel","En sektor"]},
+      {question: "Skriv det binära talet 10011100 i decimal form.", correct: "156", wrongs: ["128","192","200"]},
+      {question: "Hur fungerar NVMe-protokollet och varför är det snabbare än SATA?", correct: "Det använder PCIe-banor direkt till processorn och tillåter parallella kommandon", wrongs: ["Det lagrar data magnetiskt","Det är en typ av RAM","Det komprimerar filer automatiskt"]},
+      {question: "Varför är kunskap om binära tal viktigt för tekniker och programmerare?", correct: "För att adresser, protokoll och maskiner använder binärt", wrongs: ["För att kunna rita bättre","För ljudinspelning","För färgkodning av skärmar"]},
+      {question: "Hur konverterar man stora tal (t.ex. 1024) till binärt?", correct: "Man delar upp talet i tvåpotenser", wrongs: ["Man multiplicerar med 10","Man delar med 3","Man använder hexadecimalt"]},
+      {question: "Vad är S.M.A.R.T. i lagringsenheter?", correct: "Ett system för att övervaka och varna om diskfel", wrongs: ["En typ av RAM","En backup-programvara","En kylfläkt"]},
+      {question: "Vad innebär RAID?", correct: "Att flera diskar används som en logisk enhet", wrongs: ["En typ av grafikkort","Ett nätverksprotokoll","En strömförsörjning"]},
+      {question: "Vilken RAID-nivå används ofta i servrar för balans mellan prestanda och säkerhet?", correct: "RAID 10", wrongs: ["RAID 0","RAID 1","RAID 6"]},
+      {question: "Vad är en UPS och varför är den viktig?", correct: "En avbrottsfri kraftkälla som skyddar vid strömavbrott", wrongs: ["Ett kylsystem","Ett filformat","Ett nätverkskort"]},
+
+      // Processorer
+      {question: "Vad innebär Moores lag?", correct: "Antalet transistorer fördubblas ungefär vartannat år", wrongs: ["Processorhastigheten halveras","RAM minskar","Strömförbrukningen ökar"]},
+      {question: "Nämn tre komponenter i en processor.", correct: "ALU, styrenhet och register", wrongs: ["GPU, hårddisk, SSD","RAM, nätaggregat, kylare","Moderkort, fläkt, nätverkskort"]},
+      {question: "Vilka två processorarkitekturer är vanligast?", correct: "x86 för PC/servrar, ARM för mobiler", wrongs: ["Intel och AMD","DDR och SSD","PCIe och SATA"]},
+      {question: "Vem släppte först en 64-bitars processor för konsumenter?", correct: "AMD", wrongs: ["Intel","IBM","Apple"]},
+      {question: "Vad mäts klockfrekvens i?", correct: "Hertz (oftast GHz)", wrongs: ["Byte","Volt","Kelvin"]},
+      {question: "Ge exempel på två processormodeller från Intel och två från AMD.", correct: "Intel: i5-12600K, i7-13700K; AMD: Ryzen 5 5600X, Ryzen 7 5800X", wrongs: ["Intel: A4, B5; AMD: Z1, Z2","Intel: RTX 3060, 3070; AMD: RX 6600, 6700","Intel: DDR4, DDR5; AMD: PCIe4, PCIe5"]},
+      {question: "Vad betyder TDP (Thermal Design Power)?", correct: "Hur mycket värme processorn avger och kylningen som krävs", wrongs: ["Processorhastighet","Energiförbrukning i watt","Storlek på chippet"]},
+      {question: "Varför är cacheminnet viktigt?", correct: "Det lagrar ofta använd data nära processorn och snabbar upp", wrongs: ["Det kyler processorn","Det ökar lagringskapaciteten","Det gör processorn billigare"]},
+      {question: "Hur påverkar antalet kärnor prestanda?", correct: "Fler kärnor gör att fler uppgifter kan köras samtidigt", wrongs: ["Färre kärnor är alltid snabbare","Kärnor påverkar bara ljudkort","Kärnor används bara för grafik"]},
+      {question: "Varför är rätt socket viktigt vid datorbygge?", correct: "Processorn måste passa moderkortet", wrongs: ["För att RAM ska passa","För att kylning ska fungera","För att grafikkort ska passa"]},
+
+      // RAM
+      {question: "Vad står RAM för och vad används det till?", correct: "Random Access Memory, lagrar information för processorn", wrongs: ["Rapid Access Machine","Read And Manage","Ready Active Mode"]},
+      {question: "Vad händer med data i RAM när strömmen bryts?", correct: "Den försvinner", wrongs: ["Den lagras permanent","Den överförs till hårddisken","Den krypteras"]},
+      {question: "Vad betyder DIMM och SO-DIMM?", correct: "DIMM för stationära datorer, SO-DIMM för bärbara", wrongs: ["Två typer av SSD","Grafikkortsmodeller","Strömkällor"]},
+      {question: "Vilka DDR-generationer finns och används idag?", correct: "DDR4 och DDR5", wrongs: ["DDR och DDR2","DDR6 och DDR7","SDRAM och SRAM"]},
+      {question: "Vad är CAS latency (CL)?", correct: "Tiden minnet behöver för att svara", wrongs: ["Ett sätt att mäta kylning","Strömförbrukning","Minneskapacitet"]},
+      {question: "Vad innebär Dual/Triple/Quad Channel?", correct: "Olika minnesarkitekturer som ger högre bandbredd", wrongs: ["Olika typer av SSD","Olika typer av processorer","Olika grafikkortsgränssnitt"]},
+      {question: "Vad är ECC-minne och var används det?", correct: "Error-Correcting Code, används i servrar", wrongs: ["Extra Compact Chip, i laptops","Enhanced Cooling Component, i spel-PC","Energy Control Circuit, i mobiler"]},
+      {question: "Varför är ECC ovanligt i vanliga datorer?", correct: "De är dyrare och inte kompatibla med vanliga moderkort", wrongs: ["De drar mer ström","De är för små","De är för höga"]},
+      {question: "Vilken typ av RAM används ofta som cacheminne?", correct: "SRAM (Statisk RAM)", wrongs: ["DRAM","ROM","Flash"]},
+      {question: "Varför bör man använda minnesmoduler med samma prestanda?", correct: "Annars anpassas allt efter den långsammare modulen", wrongs: ["Det spelar ingen roll","För att få mer färg på datorn","För att minska strömförbrukning"]}
+    ];
+
+    function shuffle(arr){ for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}return arr }
+
+    let order = shuffle(QUESTIONS.map((_,i)=>i));
+    let idx = 0; let score = 0;
+
+    const qcard = document.getElementById('qcard');
+    const opts = document.getElementById('opts');
+    const indexEl = document.getElementById('index');
+    const totalEl = document.getElementById('total');
+    const total2El = document.getElementById('total2');
+    const scoreEl = document.getElementById('score');
+    const nextBtn = document.getElementById('nextBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const resultMsg = document.getElementById('resultMsg');
+    const explanationEl = document.getElementById('explanation');
+
+    function render(){
+      totalEl.textContent = QUESTIONS.length;
+      total2El.textContent = QUESTIONS.length;
+      scoreEl.textContent = score;
+      indexEl.textContent = idx+1;
+
+      const qObj = QUESTIONS[order[idx]];
+      qcard.textContent = qObj.question;
+      const options = [{text:qObj.correct,correct:true}, ...qObj.wrongs.map(w=>({text:w,correct:false}))];
+      shuffle(options);
+
+      opts.innerHTML = '';
+      options.forEach(o=>{
+        const btn = document.createElement('button');
+        btn.className = 'opt';
+        btn.innerText = o.text;
+        btn.onclick = ()=>select(btn,o.correct);
+        opts.appendChild(btn);
+      });
+
+      nextBtn.style.display = 'none';
+      restartBtn.style.display = 'none';
+      resultMsg.style.display = 'none';
+      explanationEl.style.display = 'none';
+    }
+
+    function select(button,isCorrect){
+      Array.from(opts.children).forEach(b=>b.disabled=true);
+      if(isCorrect){
+        button.classList.add('correct');
+        score++;
+        scoreEl.textContent = score;
+        resultMsg.textContent = 'Rätt!';
+      } else {
+        button.classList.add('wrong');
+        Array.from(opts.children).forEach(b=>{
+          if(b !== button && b.innerText === QUESTIONS[order[idx]].correct){ b.classList.add('correct') }
+        })
+        resultMsg.textContent = 'Fel — rätt svar visas.';
+      }
+      resultMsg.style.display = 'block';
+
+      const qObj = QUESTIONS[order[idx]];
+      if(qObj.explanation){
+        explanationEl.textContent = qObj.explanation;
+        explanationEl.style.display = 'block';
+      }
+
+      if(idx < QUESTIONS.length-1){ nextBtn.style.display = 'inline-block' } else { restartBtn.style.display = 'inline-block'; nextBtn.style.display='none' }
+    }
+
+    nextBtn.addEventListener('click', ()=>{ idx++; render(); });
+
+    restartBtn.addEventListener('click', ()=>{ order = shuffle(QUESTIONS.map((_,i)=>i)); idx = 0; score = 0; scoreEl.textContent = score; render(); });
+
+    render();
+  </script>
+</body>
+</html>
